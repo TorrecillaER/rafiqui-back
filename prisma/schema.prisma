@@ -1,0 +1,287 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator erd {
+  provider = "prisma-erd-generator"
+  output   = "../docs/ERD.svg"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  DONOR
+  OPERATOR
+  PARTNER
+  ADMIN
+}
+
+enum AssetStatus {
+  PENDING_COLLECTION
+  IN_TRANSIT
+  WAREHOUSE_RECEIVED
+  INSPECTING
+  INSPECTED
+  RECYCLED
+  REUSED
+  READY_FOR_REUSE
+  REFURBISHING
+  LISTED_FOR_SALE
+  ART_CANDIDATE
+  ART_LISTED_FOR_SALE
+}
+
+enum InspectionResult {
+  REUSE
+  RECYCLE
+  ART
+}
+
+enum ArtCategory {
+  NFT
+  SCULPTURE
+  INSTALLATION
+}
+
+enum MaterialType {
+  ALUMINUM
+  GLASS
+  SILICON
+  COPPER
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(DONOR)
+  walletAddress String?
+  requests  CollectionRequest[] @relation("DonorRequests")
+  assignedRequests CollectionRequest[] @relation("AssignedCollector")
+  inspections Inspection[]
+  recycleRecords RecycleRecord[] @relation("RecycleOperator")
+  materialOrders MaterialOrder[] @relation("MaterialBuyer")
+  panelOrders PanelOrder[] @relation("PanelBuyer")
+  artOrders ArtOrder[] @relation("ArtBuyer")
+  createdAt DateTime @default(now())
+}
+
+model CollectionRequest {
+  id             String   @id @default(uuid())
+  pickupAddress  String
+  city           String
+  postalCode     String
+  estimatedCount Int
+  panelType      String
+  contactName    String
+  contactPhone   String
+  notes          String?
+  status         String   @default("PENDING")
+  donorId        String?
+  donor          User?    @relation("DonorRequests", fields: [donorId], references: [id])
+  assignedCollectorId String?
+  assignedCollector   User?    @relation("AssignedCollector", fields: [assignedCollectorId], references: [id])
+  assets         Asset[]
+  createdAt      DateTime @default(now())
+  completedAt    DateTime?
+}
+
+model Asset {
+  id                      String   @id @default(uuid())
+  nfcTagId                String?  @unique
+  qrCode                  String?
+  status                  AssetStatus
+  brand                   String?
+  model                   String?
+  collectionRequestId     String?
+  collectionRequest       CollectionRequest? @relation(fields: [collectionRequestId], references: [id])
+  inspection              Inspection?
+  artPiece                ArtPiece?
+  recycleRecord           RecycleRecord?
+  panelOrders             PanelOrder[]
+  inspectorId             String?
+  inspectionStartedAt     DateTime?
+  inspectedAt             DateTime?
+  refurbishedById         String?
+  refurbishedAt           DateTime?
+  refurbishmentNotes      String?
+  measuredPowerWatts      Float?
+  measuredVoltage         Float?
+  capacityRetainedPercent Float?
+  healthPercentage        Float?
+  dimensionLength         Float?
+  dimensionWidth          Float?
+  dimensionHeight         Float?
+  tokenId                 String?
+  soldAt                  DateTime?
+  buyerWallet             String?
+  createdAt               DateTime @default(now())
+}
+
+model Inspection {
+  id                String   @id @default(uuid())
+  measuredVoltage   Float
+  measuredAmps      Float
+  physicalCondition String
+  photoUrl          String?
+  notes             String?
+  aiRecommendation  InspectionResult
+  assetId           String @unique
+  asset             Asset  @relation(fields: [assetId], references: [id])
+  inspectorId       String
+  inspector         User   @relation(fields: [inspectorId], references: [id])
+  createdAt         DateTime @default(now())
+}
+
+model ArtPiece {
+  id          String      @id @default(uuid())
+  title       String
+  artist      String
+  description String
+  price       Float
+  currency    String      @default("USD")
+  category    ArtCategory
+  imageUrl    String?
+  isAvailable Boolean     @default(true)
+  
+  sourceAssetId String?   @unique
+  sourceAsset   Asset?    @relation(fields: [sourceAssetId], references: [id])
+  
+  tokenId     String?     @unique
+  contractAddress String?
+  
+  orders      ArtOrder[]
+  soldAt      DateTime?
+  buyerWallet String?
+  
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model RecycleRecord {
+  id              String   @id @default(uuid())
+  assetId         String   @unique
+  asset           Asset    @relation(fields: [assetId], references: [id])
+  operatorId      String
+  operator        User     @relation("RecycleOperator", fields: [operatorId], references: [id])
+  
+  panelWeightKg   Float    @default(20.0)
+  
+  aluminumKg      Float
+  glassKg         Float
+  siliconKg       Float
+  copperKg        Float
+  
+  blockchainTxHash String?
+  materialsTxHash  String?
+  ipfsHash         String?
+  
+  createdAt       DateTime @default(now())
+}
+
+model MaterialStock {
+  id              String       @id @default(uuid())
+  type            MaterialType @unique
+  name            String
+  totalKg         Float        @default(0)
+  availableKg     Float        @default(0)
+  reservedKg      Float        @default(0)
+  pricePerKg      Float
+  
+  updatedAt       DateTime     @updatedAt
+  createdAt       DateTime     @default(now())
+}
+
+enum MaterialDestination {
+  MANUFACTURING
+  CONSTRUCTION
+  RESEARCH
+  RECYCLING_CENTER
+  OTHER
+}
+
+enum PanelPurchaseDestination {
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+  RESEARCH
+  RESALE
+  OTHER
+}
+
+model MaterialOrder {
+  id              String       @id @default(uuid())
+  buyerId         String?
+  buyer           User?        @relation("MaterialBuyer", fields: [buyerId], references: [id])
+  
+  materialType    MaterialType
+  quantityKg      Float
+  pricePerKg      Float
+  totalPrice      Float
+  
+  buyerWallet     String
+  destination     MaterialDestination @default(OTHER)
+  destinationNotes String?
+  
+  status          OrderStatus  @default(PENDING)
+  blockchainTxHash String?
+  
+  createdAt       DateTime     @default(now())
+  completedAt     DateTime?
+}
+
+model PanelOrder {
+  id              String       @id @default(uuid())
+  assetId         String
+  asset           Asset        @relation(fields: [assetId], references: [id])
+  
+  buyerId         String?
+  buyer           User?        @relation("PanelBuyer", fields: [buyerId], references: [id])
+  
+  buyerWallet     String
+  price           Float
+  
+  destination     PanelPurchaseDestination @default(OTHER)
+  destinationNotes String?
+  
+  status          OrderStatus  @default(PENDING)
+  blockchainTxHash String?
+  
+  createdAt       DateTime     @default(now())
+  completedAt     DateTime?
+}
+
+model ArtOrder {
+  id              String       @id @default(uuid())
+  artPieceId      String
+  artPiece        ArtPiece     @relation(fields: [artPieceId], references: [id])
+  
+  buyerId         String?
+  buyer           User?        @relation("ArtBuyer", fields: [buyerId], references: [id])
+  
+  buyerWallet     String
+  price           Float
+  
+  messageToArtist String?
+  
+  status          OrderStatus  @default(PENDING)
+  blockchainTxHash String?
+  
+  createdAt       DateTime     @default(now())
+  completedAt     DateTime?
+}
