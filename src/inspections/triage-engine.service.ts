@@ -17,25 +17,25 @@ export class TriageEngineService {
   ];
 
   /**
-   * Evalúa un panel y determina su destino
-   * TEMPORAL: Siempre retorna ART para pruebas del flujo de arte
-   * @returns ART (temporalmente forzado)
+   * Evalúa un panel y determina su destino usando asignación secuencial
+   * Secuencia: REUSE → ART → RECYCLE → REUSE → ...
+   * @returns InspectionResult basado en la secuencia
    */
   evaluatePanel(
     voltage: number,
     amperage: number,
     physicalCondition: string,
   ): InspectionResult {
-    // ⚠️ TEMPORAL: FORZAR SIEMPRE ART PARA PRUEBAS
-    // TODO: Restaurar lógica secuencial después de pruebas
-    const result = InspectionResult.ART;
+    // Obtener resultado basado en la secuencia
+    const sequenceIndex = this.inspectionCounter % this.resultSequence.length;
+    const result = this.resultSequence[sequenceIndex];
     
     // Incrementar contador para la próxima inspección
     this.inspectionCounter++;
     
     this.logger.log(
       `Panel evaluado - Contador: ${this.inspectionCounter}, ` +
-      `Resultado: ${result} [FORZADO PARA PRUEBAS] (V: ${voltage}, A: ${amperage}, Cond: ${physicalCondition})`
+      `Resultado: ${result} (V: ${voltage}, A: ${amperage}, Cond: ${physicalCondition})`
     );
     
     return result;

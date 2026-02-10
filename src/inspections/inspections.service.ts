@@ -37,7 +37,7 @@ export class InspectionsService {
   ) {}
 
   async create(createInspectionDto: CreateInspectionDto) {
-    const { assetId, inspectorId, measuredVoltage, measuredAmps, physicalCondition, photoUrl, notes } = createInspectionDto;
+    const { assetId, inspectorId, measuredVoltage, measuredAmps, physicalCondition, photoUrl, notes, aiRecommendation } = createInspectionDto;
 
     // Obtener el asset para tener el qrCode
     const asset = await this.prisma.asset.findUnique({
@@ -47,13 +47,6 @@ export class InspectionsService {
     if (!asset) {
       throw new Error('Asset no encontrado');
     }
-
-    // Evaluación con Triage Engine
-    const aiRecommendation = this.triageEngine.evaluatePanel(
-      measuredVoltage,
-      measuredAmps,
-      physicalCondition,
-    );
 
     // Determinar nuevo estado del asset y estado de blockchain
     let newAssetStatus: AssetStatus;

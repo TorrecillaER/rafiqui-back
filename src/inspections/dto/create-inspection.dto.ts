@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsNumber, IsString, IsUUID, IsUrl, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsUUID, IsUrl, IsOptional, IsEnum } from 'class-validator';
+import { InspectionResult } from '@prisma/client';
 
 export class CreateInspectionDto {
   @IsUUID()
@@ -29,4 +30,8 @@ export class CreateInspectionDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsEnum(InspectionResult)
+  @IsNotEmpty()
+  aiRecommendation: InspectionResult;
 }
