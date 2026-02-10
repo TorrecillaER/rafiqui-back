@@ -39,15 +39,6 @@ export class PanelsMarketplaceService {
 
     const price = this.calculatePanelPrice(asset);
 
-    if (buyerId) {
-      const userExists = await this.prisma.user.findUnique({
-        where: { id: buyerId },
-      });
-      if (!userExists) {
-        throw new BadRequestException('Usuario comprador no encontrado');
-      }
-    }
-
     const order = await this.prisma.panelOrder.create({
       data: {
         assetId,
